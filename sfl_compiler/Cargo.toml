@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sfl_lib = { path = "../sfl_lib" }
+sfl_frontend_lib = { path = "../sfl_frontend_lib" }

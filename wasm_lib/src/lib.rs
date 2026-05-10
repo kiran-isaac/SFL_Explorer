@@ -3,7 +3,7 @@ mod utils;
 #[cfg(target_arch = "wasm32")]
 mod wasm_only {
     use super::utils::*;
-    use sfl_lib::*;
+    use sfl_frontend_lib::*;
 
     use std::collections::BTreeMap;
     use wasm_bindgen::prelude::*;
