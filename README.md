@@ -39,7 +39,13 @@ You may choose between lazy and free choice evaluation. Free choice allows you t
 
 ## Typechecking
 
-Based on "Complete and Easy Bidirectional Typechecking for Higher-Rank Polymorphism" [Jana Dunfield, Neelakantan R. Krishnaswami]. See section 4.3.5 of my dissertation.
+Based on "Complete and Easy Bidirectional Typechecking for Higher-Rank Polymorphism" [Jana Dunfield, Neelakantan R. Krishnaswami] (referenced as 8 in the below algorithm preview). See section 4.3.5 of my ![Dissertation](Dissertation.pdf) for a full explaination and an example derivation. 
+### Preview
+Below is a preview of the typechecking algorithm, taken from Appendix E.
+
+Typechecking             | Algorithmic Subtyping and Context Instantiation
+:-------------------------:|:-------------------------:
+<img width="1106" height="1027" alt="image" src="https://github.com/user-attachments/assets/02fa9f52-0d13-4d4b-b482-eaedfdcc2549" /> | <img width="700" height="970" alt="image" src="https://github.com/user-attachments/assets/8ff31b3c-ebae-4b67-a09f-aae0f87c9566" />
 
 ## The Website
 All functionality for the language is written in Rust. The Rust functionality is compiled to Web Assembly,
