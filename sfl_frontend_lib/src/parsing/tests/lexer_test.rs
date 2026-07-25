@@ -76,6 +76,26 @@ fn float_lit() {
 }
 
 #[test]
+fn char_lit() {
+    let string = "'\\n' '\\r' 'a'";
+    let tokens = test_lex(string.to_string()).unwrap();
+
+    assert!(tokens[0].tt == TokenType::CharLit);
+    assert!(tokens[0].value == "\n");
+
+    assert!(tokens[1].tt == TokenType::CharLit);
+    assert!(tokens[1].value == "\r");
+
+    assert!(tokens[2].tt == TokenType::CharLit);
+    assert!(tokens[2].value == "a");
+
+    let invalid_char_lits = vec!["'\t'", "''", "'aa'", "'aaa'", "'\\a'"];
+    for lit in invalid_char_lits {
+        test_lex_should_err(lit.to_string()).unwrap();
+    }
+}
+
+#[test]
 fn bool_lit() {
     lexer_tokentype_test!(
         "true false",

@@ -105,7 +105,7 @@ impl Parser {
                 }
                 Ok(ast.add_id(t, line, col))
             }
-            TokenType::IntLit | TokenType::FloatLit | TokenType::BoolLit => {
+            TokenType::IntLit | TokenType::FloatLit | TokenType::BoolLit | TokenType::CharLit => {
                 Ok(ast.add_lit(t, line, col))
             }
             TokenType::Match => Ok(self.parse_match(ast, type_table)?),
@@ -195,6 +195,7 @@ impl Parser {
                 }
 
                 TokenType::FloatLit
+                | TokenType::CharLit
                 | TokenType::IntLit
                 | TokenType::BoolLit => {
                     let right = self.parse_expr_primary(ast, type_table)?;

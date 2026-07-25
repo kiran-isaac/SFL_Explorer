@@ -42,6 +42,7 @@ impl Parser {
                 }
 
                 TokenType::FloatLit
+                | TokenType::CharLit
                 | TokenType::IntLit
                 | TokenType::BoolLit => {
                     let right = self
@@ -113,7 +114,7 @@ impl Parser {
                     _ => Err(self.parse_error(format!("unexpected char in id: {}", t.value))),
                 }
             }
-            TokenType::IntLit | TokenType::FloatLit | TokenType::BoolLit => {
+            TokenType::IntLit | TokenType::FloatLit | TokenType::BoolLit | TokenType::CharLit => {
                 Ok((ast.add_lit(t, line, col), bound_set))
             }
             TokenType::LParen => {

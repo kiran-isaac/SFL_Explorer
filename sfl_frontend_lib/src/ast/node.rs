@@ -46,6 +46,7 @@ impl ASTNode {
                     TokenType::IntLit => Type::Primitive(Primitive::Int64),
                     TokenType::FloatLit => Type::Primitive(Primitive::Float64),
                     TokenType::BoolLit => Type::Primitive(Primitive::Bool),
+                    TokenType::StringLit => unimplemented!("String literal type"),
                     _ => panic!("Literal node with bad token"),
                 },
                 None => panic!("Literal node with no token"),

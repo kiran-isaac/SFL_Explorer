@@ -175,6 +175,54 @@ impl Lexer {
         }
     }
 
+    fn lex_char_lit(&mut self) -> Result<Token, LexerError> {
+        let mut str = String::new();
+
+        self.advance();
+
+        while self.c() != '\'' {
+            if self.c().is_ascii_control() {
+                return Err(self.error(format!("Unexpected char in char literal: {}", self.c())));
+            }
+            str.push(self.c());
+            self.advance();
+
+            if str.len() > 2 {
+                return Err(self.error(format!("Unterminated char literal")));
+            }
+        }
+
+        self.advance();
+
+        // convert str to char accounting for escape sequences
+        let char = match str.as_str() {
+            "\\n" => '\n',
+            "\\t" => '\t',
+            "\\r" => '\r',
+            "\\0" => '\0',
+            _ => {
+                if str.len() == 2 {
+                    // check if first char is a backslash
+                    if str.chars().next().unwrap() == '\\' {
+                        return Err(self.error(format!("Invalid escape sequence: {}", str)));
+                    } else {
+                        return Err(self.error(format!("Invalid char literal: {}", str)));
+                    }
+                }
+                if str.len() == 0 {
+                    return Err(self.error(format!("Empty char literal")));
+                }
+
+                str.chars().next().unwrap()
+            }
+        };
+
+        Ok(Token {
+            tt: TokenType::CharLit,
+            value: char.to_string(),
+        })
+    }
+
     pub fn get_token(&mut self) -> Result<Token, LexerError> {
         // Advance, and if we hit a newline, return a newline token
         // If we hit multiple newlines, skip all but one
@@ -377,6 +425,7 @@ impl Lexer {
                     }),
                 }
             }
+            '\'' => self.lex_char_lit(),
             '\0' => Ok(Token {
                 tt: TokenType::EOF,
                 value: "".to_string(),
