@@ -1,3 +1,5 @@
+use crate::Primitive;
+
 use super::*;
 
 #[derive(Clone, Debug)]
@@ -114,17 +116,73 @@ impl ASTDiff {
 }
 
 impl AST {
+    // Print a string node (i.e. a list of chars).
+    // Built recursively from the end
+    // (Cons 'B') (Cons 'i' (Cons 'n' (Cons 'g' (Cons 'u' (Const 's' Nil)))))))
+    fn print_string(&self, node: usize) -> String {
+        match self.get(node).t {
+            ASTNodeType::Application => {
+                let func = self.get_func(node);
+                let arg = self.get_arg(node);
+                let rest_of_string = self.print_string(arg);
+
+                assert_eq!(self.get(self.get_func(func)).get_value(), "Cons");
+                let func_arg_node = self.get(self.get_arg(func));
+                func_arg_node.get_value() + rest_of_string.as_str()
+            }
+            ASTNodeType::Identifier => {
+                assert_eq!(self.get(node).get_value(), "Nil");
+                String::new()
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    // Print a list in [] form.
+    // Built recursively from the end
+    fn print_list(&self, node: usize, show_assigned_types: bool) -> Vec<String> {
+        match self.get(node).t {
+            ASTNodeType::Application => {
+                let func = self.get_func(node);
+                let arg = self.get_arg(node);
+                let mut rest_of_list = self.print_list(arg, show_assigned_types);
+
+                assert_eq!(self.get(self.get_func(func)).get_value(), "Cons");
+                let func_arg = self.get_arg(func);
+                rest_of_list.insert(0, self.to_string_sugar(func_arg, show_assigned_types));
+                rest_of_list
+            }
+            ASTNodeType::Identifier => {
+                assert_eq!(self.get(node).get_value(), "Nil");
+                vec![]
+            }
+            _ => unreachable!(),
+        }
+    }
+
     pub fn to_string_sugar(&self, node: usize, show_assigned_types: bool) -> String {
         let n = self.get(node);
         match n.t {
-            ASTNodeType::Identifier => match &n.type_assignment {
-                Some(t) => format!("{} :: {}", n.get_value(), t.to_string()),
-                None => n.get_value(),
+            ASTNodeType::Identifier => {
+                if n.get_value() == "Nil" {}
+                match &n.type_assignment {
+                    Some(t) => format!("{} :: {}", n.get_value(), t.to_string()),
+                    None => n.get_value(),
+                }
             },
             ASTNodeType::Literal => {
-                format!("{}", n.get_value())
+                match n.get_lit_type() {
+                    Type::Primitive(Primitive::Char) => format!("'{}'", n.get_value()),
+                    _ => format!("{}", n.get_value())
+                }
             }
             ASTNodeType::Application => {
+                match self.list_string_scan(node) {
+                    ASTStringListScanResult::ListAndString => return format!("\"{}\"", self.print_string(node)),
+                    ASTStringListScanResult::ListNotString | ASTStringListScanResult::ListMaybeString => return format!("[{}]", self.print_list(node, show_assigned_types).join(", ")),
+                    ASTStringListScanResult::NotList => {}
+                }
+
                 let func = self.get_func(node);
                 let arg = self.get_arg(node);
                 let func_str = self.to_string_sugar(func, show_assigned_types);
@@ -137,7 +195,7 @@ impl AST {
                 };
                 // If the argument is an application, wrap it in parens
                 let arg_str = match self.get(arg).t {
-                    ASTNodeType::Application | ASTNodeType::Abstraction => format!("({})", arg_str),
+                    ASTNodeType::Application | ASTNodeType::Abstraction => if n.dollar_app {arg_str} else {format!("({})", arg_str)},
                     _ => arg_str,
                 };
 
@@ -427,91 +485,6 @@ impl AST {
 
         s.trim().to_string()
     }
-
-    pub fn to_string_desugar_and_type(&self, node: usize) -> String {
-        let n = self.get(node);
-        match n.t {
-            ASTNodeType::Identifier => match &n.type_assignment {
-                Some(t) => format!("{} :: {}", n.get_value(), t.to_string()),
-                None => n.get_value(),
-            },
-            ASTNodeType::Literal => {
-                format!("{}", n.get_value())
-            }
-            ASTNodeType::Application => {
-                let func = self.get_func(node);
-                let arg = self.get_arg(node);
-
-                let func_str = self.to_string_desugar_and_type(func);
-
-                // If the func is an abstraction, wrap it in parens
-                let func_str = match self.get(func).t {
-                    ASTNodeType::Abstraction => format!("({})", func_str),
-                    _ => func_str,
-                };
-
-                let arg_str = self.to_string_desugar_and_type(arg);
-                // If the argument is an application, wrap it in parens
-                let arg_str = match self.get(arg).t {
-                    ASTNodeType::Application | ASTNodeType::Abstraction => format!("({})", arg_str),
-                    _ => arg_str,
-                };
-
-                format!("{} {}", func_str, arg_str)
-            }
-            ASTNodeType::Assignment => {
-                let id = self.get(self.get(node).children[0]);
-                let var_name = id.get_value();
-                let exp = self.to_string_desugar_and_type(self.get_assign_exp(node));
-
-                let type_str = if let Some(ass_type) = &self.get(node).type_assignment {
-                    var_name.clone() + " :: " + ass_type.to_string().as_str() + "\n"
-                } else {
-                    "".to_string()
-                };
-
-                format!("{}{} = {}", type_str, &var_name, exp)
-            }
-            ASTNodeType::Module => {
-                let mut s = String::new();
-                for c in &n.children {
-                    s.push_str(&self.to_string_desugar_and_type(*c));
-                    s.push_str("\n");
-                }
-
-                s.trim().to_string()
-            }
-            ASTNodeType::Match => {
-                let mut s = "match ".to_string();
-                let unpack_pattern = self.get_match_unpack_pattern(node);
-                s.push_str(&self.to_string_desugar_and_type(unpack_pattern));
-                for (pat, exp) in self.get_match_cases(node) {
-                    s.push_str(" | ");
-                    s.push_str(&self.to_string_desugar_and_type(pat));
-                    s.push_str(" -> ");
-                    s.push_str(&self.to_string_desugar_and_type(exp));
-                    s.push('\n');
-                }
-                s.pop();
-                s
-            }
-            ASTNodeType::Abstraction => {
-                let expr_str = self.to_string_desugar_and_type(n.children[1]);
-                let var_str = self.to_string_desugar_and_type(n.children[0]);
-
-                let mut res = "\\".to_string();
-                res.push_str(&var_str);
-                res.push_str(" . ");
-                res.push_str(&expr_str);
-                res
-            }
-            ASTNodeType::Pair => {
-                let a = self.to_string_desugar_and_type(self.get_first(node));
-                let b = self.to_string_desugar_and_type(self.get_second(node));
-                format!("({}, {})", a, b)
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -642,5 +615,15 @@ mod test {
             main = if (5 <= 1) 1 (5 * (fac (5 - 1)))
         "#,
         )
+    }
+
+    #[test]
+    fn str_output() -> Result<(), ParserError> {
+        let ast = Parser::from_string("main = \"hello\\nworld!\"".to_string())
+            .parse_module(true)?
+            .ast;
+
+        println!("{:?}", ast);
+        Ok(())
     }
 }

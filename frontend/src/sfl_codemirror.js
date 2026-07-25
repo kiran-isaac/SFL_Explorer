@@ -54,6 +54,19 @@ CodeMirror.defineMode("sfl", function (_config, modeConfig) {
             return "string error";
         }
 
+        if (ch == '"') {
+            if (source.eat('\\')) {
+                source.next();  // should handle other escapes here
+            }
+            else {
+                source.eatWhile(function (ch) { return ch != '"' && ch != '\\'; });
+            }
+            if (source.eat('"')) {
+                return "string";
+            }
+            return "string error";
+        }
+
         if (largeRE.test(ch)) {
             source.eatWhile(idRE);
             if (source.eat('.')) {
@@ -229,6 +242,19 @@ CodeMirror.defineMode("sfl_no_prelude", function (_config, modeConfig) {
                 source.next();
             }
             if (source.eat('\'')) {
+                return "string";
+            }
+            return "string error";
+        }
+
+        if (ch == '"') {
+            if (source.eat('\\')) {
+                source.next();  // should handle other escapes here
+            }
+            else {
+                source.eatWhile(function (ch) { return ch != '"' && ch != '\\'; });
+            }
+            if (source.eat('"')) {
                 return "string";
             }
             return "string error";

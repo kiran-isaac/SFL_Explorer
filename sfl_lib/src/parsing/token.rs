@@ -26,6 +26,8 @@ pub enum TokenType {
 
     LParen,
     RParen,
+    LBrackets,
+    RBrackets,
 
     Lambda,
 

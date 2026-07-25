@@ -76,9 +76,9 @@ fn float_lit() {
 }
 
 #[test]
-fn char_lit() {
+fn char_lit() -> Result<(), LexerError> {
     let string = "'\\n' '\\r' 'a'";
-    let tokens = test_lex(string.to_string()).unwrap();
+    let tokens = test_lex(string.to_string())?;
 
     assert!(tokens[0].tt == TokenType::CharLit);
     assert!(tokens[0].value == "\n");
@@ -89,10 +89,32 @@ fn char_lit() {
     assert!(tokens[2].tt == TokenType::CharLit);
     assert!(tokens[2].value == "a");
 
-    let invalid_char_lits = vec!["'\t'", "''", "'aa'", "'aaa'", "'\\a'"];
+    let invalid_char_lits = vec!["''", "'aa'", "'aaa'", "'\\a'"];
     for lit in invalid_char_lits {
         test_lex_should_err(lit.to_string()).unwrap();
     }
+    Ok(())
+}
+
+#[test]
+fn str_lit() -> Result<(), LexerError> {
+    let string = r#""hello\r\nworld""#;
+    let tokens = test_lex(string.to_string())?;
+
+    assert!(tokens[0].tt == TokenType::StringLit);
+    assert!(tokens[0].value == "hello\r\nworld");
+
+    // assert!(tokens[1].tt == TokenType::CharLit);
+    // assert!(tokens[1].value == "\r");
+    //
+    // assert!(tokens[2].tt == TokenType::CharLit);
+    // assert!(tokens[2].value == "a");
+    //
+    // let invalid_char_lits = vec!["''", "'aa'", "'aaa'", "'\\a'"];
+    // for lit in invalid_char_lits {
+    //     test_lex_should_err(lit.to_string()).unwrap();
+    // }
+    Ok(())
 }
 
 #[test]

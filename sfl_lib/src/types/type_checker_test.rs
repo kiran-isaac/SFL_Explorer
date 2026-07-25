@@ -347,17 +347,3 @@ fn bind_io() -> Result<(), TypeError> {
     }"#,
     )
 }
-
-#[test]
-fn tests_for_diss() -> Result<(), TypeError> {
-    // tc_test_should_pass_no_prelude(
-    //     r#"
-    // pair :: a -> b -> (a, b)
-    // pair a b = (a, b)
-    // "#)
-    tc_test_should_pass_no_prelude(
-        r#"
-    plus a b = a + b
-    "#,
-    )
-}

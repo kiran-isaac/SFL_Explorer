@@ -1,7 +1,7 @@
 use super::lexer::{Lexer, LexerError};
 use super::token::*;
 use crate::ast::AST;
-use crate::{ASTNodeType, KnownTypeLabelTable, Type, PRELUDE};
+use crate::{ASTNodeType, KnownTypeLabelTable, Type, Primitive, PRELUDE};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
 use std::fs::File;
@@ -16,6 +16,10 @@ pub struct Parser {
     lexer: Lexer,
     type_assignment_map: HashMap<String, Type>,
     bound: HashSet<String>,
+    // Is list defined as 'data List a = Cons a (List a) | Nil?' It is in the prelude but may have 
+    // been redefined. We need to know if it is defined properly to know if we can use [x, y] and 
+    // "string" syntax sugar
+    list_is_defined_properly: bool,
 }
 
 pub struct ParserError {
@@ -34,6 +38,7 @@ impl TypeMap {
         type_decls.insert("Int".to_string(), Type::int64());
         type_decls.insert("Float".to_string(), Type::float64());
         type_decls.insert("Bool".to_string(), Type::bool());
+        type_decls.insert("Char".to_string(), Type::char());
         Self { types: type_decls }
     }
 }
@@ -76,6 +81,7 @@ impl Parser {
             lexer: Lexer::new(contents, Some(filename)),
             bound: HashSet::new(),
             type_assignment_map: HashMap::new(),
+            list_is_defined_properly: false,
         })
     }
 
@@ -88,6 +94,7 @@ impl Parser {
                 .cloned()
                 .collect(),
             type_assignment_map: HashMap::new(),
+            list_is_defined_properly: false,
         }
     }
 

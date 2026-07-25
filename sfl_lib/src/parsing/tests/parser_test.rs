@@ -460,3 +460,56 @@ fn parse_match_fold() -> Result<(), ParserError> {
 
     Ok(())
 }
+
+#[test]
+fn parse_string() -> Result<(), ParserError> {
+    let program = r#"
+    main = "Hello, world!"
+    "#;
+
+    let pr = Parser::from_string(program.to_string()).parse_module(true)?;
+
+    Ok(())
+}
+
+#[test]
+fn string_error_if_type_not_defined() {
+    let program = r#"
+    main = "Hello, world!"
+    "#;
+
+    assert!(Parser::from_string(program.to_string()).parse_module(false).is_err());
+
+    let program = r#"
+    data String = Test1 | Test2
+
+    main = "Hello, world!"
+    "#;
+
+    assert!(Parser::from_string(program.to_string()).parse_module(false).is_err());
+
+    let program = r#"
+    data List a = Cons a (List a) | Nil
+    type String = List Int
+
+    main = "Hello, world!"
+    "#;
+
+    assert!(Parser::from_string(program.to_string()).parse_module(false).is_err());
+}
+
+#[test]
+fn list() {
+    // let pr = Parser::from_string("[1, 2, 3, 4]".to_string()).parse_tl_expression(true).unwrap();
+    // let ast = &pr.ast;
+    //
+    // let str = ast.to_string_sugar(ast.root, false);
+    // println!("{}", str);
+
+
+    let pr = Parser::from_string("[1, 2, [], 4]".to_string()).parse_tl_expression(true).unwrap();
+    let ast = &pr.ast;
+
+    let str = ast.to_string_sugar(ast.root, false);
+    println!("{}", str);
+}

@@ -42,7 +42,6 @@ impl Lexer {
         }
     }
 
-    #[inline(always)]
     fn c(&self) -> char {
         if self.i >= self.file.len() {
             return '\0';
@@ -53,6 +52,11 @@ impl Lexer {
     fn advance(&mut self) {
         self.col += 1;
         self.i += 1;
+    }
+
+    fn next(&mut self) -> char {
+        self.advance();
+        self.c()
     }
 
     fn error(&self, msg: String) -> LexerError {
@@ -132,7 +136,7 @@ impl Lexer {
             _ => {}
         }
 
-        while !(self.c().is_whitespace() || self.c() == '\0' || self.c() == ')' || self.c() == ',')
+        while !(self.c().is_whitespace() || self.c() == '\0' || self.c() == ')' || self.c() == ',' || self.c() == ']')
         {
             match self.c() {
                 '0'..='9' => {
@@ -175,51 +179,97 @@ impl Lexer {
         }
     }
 
-    fn lex_char_lit(&mut self) -> Result<Token, LexerError> {
+    fn lex_string_or_char_literal_body(&mut self, terminal_char: char) -> Result<String, LexerError> {
         let mut str = String::new();
 
-        self.advance();
-
-        while self.c() != '\'' {
-            if self.c().is_ascii_control() {
-                return Err(self.error(format!("Unexpected char in char literal: {}", self.c())));
+        while self.c() != terminal_char {
+            match self.c() {
+                '\\' => {
+                    match self.next() {
+                        'n' => str.push('\n'),
+                        't' => str.push('\t'),
+                        'r' => str.push('\r'),
+                        '0' => str.push('\0'),
+                        '\\' => str.push('\\'),
+                        '"' => str.push('"'),
+                        '\'' => str.push('\''),
+                        'x' => {
+                            let h1 = self.next();
+                            let h2 = self.next();
+                            let hex = [h1, h2].iter().collect::<String>();
+                            let byte = u8::from_str_radix(&hex, 16)
+                                .map_err(|_| self.error(format!("invalid \\x escape: \\x{}", hex)))?;
+                            str.push(byte as char);
+                        }
+                        'u' => {
+                            if self.next() == '{' {
+                                return Err(self.error(format!("Expected {{ after \\u, got {}}}", self.c())))
+                            }
+                            let mut hex = String::new();
+                            loop {
+                                if self.next() == '}' {
+                                    break;
+                                }
+                                hex.push(self.c());
+                            }
+                            let cp = u32::from_str_radix(&hex, 16)
+                                .map_err(|_| self.error(format!("invalid \\u{{{}}} escape", hex)))?;
+                            let ch = char::from_u32(cp)
+                                .ok_or_else(|| self.error(format!("invalid Unicode scalar: {}", cp)))?;
+                            str.push(ch);
+                        }
+                        _ => {
+                            return Err(self.error(format!("Unrecognised escape sequence: \\{:?}", self.c())))
+                        }
+                    }
+                }
+                '\n' | '\0' => return Err(self.error("Unterminated string literal".to_string())),
+                x => {
+                    if x.is_control() {
+                        return Err(self.error("Malformed string literal: Ascii/Unicode control character in string literal".into()))
+                    }
+                    
+                    str.push(self.c());
+                }
             }
-            str.push(self.c());
+
             self.advance();
+        }
 
-            if str.len() > 2 {
-                return Err(self.error(format!("Unterminated char literal")));
-            }
+        if terminal_char != self.c() {
+            unreachable!("expected {:?} got {:?}", terminal_char, self.c())
         }
 
         self.advance();
+        Ok(str)
+    }
 
-        // convert str to char accounting for escape sequences
-        let char = match str.as_str() {
-            "\\n" => '\n',
-            "\\t" => '\t',
-            "\\r" => '\r',
-            "\\0" => '\0',
-            _ => {
-                if str.len() == 2 {
-                    // check if first char is a backslash
-                    if str.chars().next().unwrap() == '\\' {
-                        return Err(self.error(format!("Invalid escape sequence: {}", str)));
-                    } else {
-                        return Err(self.error(format!("Invalid char literal: {}", str)));
-                    }
-                }
-                if str.len() == 0 {
-                    return Err(self.error(format!("Empty char literal")));
-                }
+    fn lex_char_lit(&mut self) -> Result<Token, LexerError> {
+        self.advance();
+        
+        let str = self.lex_string_or_char_literal_body('\'')?;
 
-                str.chars().next().unwrap()
-            }
-        };
+        if str.len() > 1 {
+            return Err(self.error(format!("Char literal too long!: {:?}", str)));
+        }
+
+        match str.len() {
+            0 => Err(self.error("Empty char literal".to_string())),
+            1 => Ok(Token {
+                tt: TokenType::CharLit,
+                value: str,
+            }),
+            _ => Err(self.error(format!("Char literal too long: {:?}", str)))
+        }
+    }
+
+    fn lex_str_lit(&mut self) -> Result<Token, LexerError> {
+        self.advance();
+        let str = self.lex_string_or_char_literal_body('\"')?;
 
         Ok(Token {
-            tt: TokenType::CharLit,
-            value: char.to_string(),
+            tt: TokenType::StringLit,
+            value: str,
         })
     }
 
@@ -271,13 +321,6 @@ impl Lexer {
                     })
                 }
             },
-            '(' => {
-                self.advance();
-                Ok(Token {
-                    tt: TokenType::LParen,
-                    value: "(".to_string(),
-                })
-            }
             '|' => {
                 self.advance();
                 Ok(Token {
@@ -349,10 +392,31 @@ impl Lexer {
                 //     value: "@".to_string(),
                 // })
             }
+            '(' => {
+                self.advance();
+                Ok(Token {
+                    tt: TokenType::LParen,
+                    value: "(".to_string(),
+                })
+            }
             ')' => {
                 self.advance();
                 Ok(Token {
                     tt: TokenType::RParen,
+                    value: ")".to_string(),
+                })
+            }
+            '[' => {
+                self.advance();
+                Ok(Token {
+                    tt: TokenType::LBrackets,
+                    value: ")".to_string(),
+                })
+            }
+            ']' => {
+                self.advance();
+                Ok(Token {
+                    tt: TokenType::RBrackets,
                     value: ")".to_string(),
                 })
             }
@@ -426,6 +490,7 @@ impl Lexer {
                 }
             }
             '\'' => self.lex_char_lit(),
+            '\"' => self.lex_str_lit(),
             '\0' => Ok(Token {
                 tt: TokenType::EOF,
                 value: "".to_string(),

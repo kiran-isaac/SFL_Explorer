@@ -13,6 +13,7 @@ pub enum Primitive {
 
     Int64,
     Float64,
+    Char,
     Bool,
 }
 
@@ -40,6 +41,10 @@ impl Type {
 
     pub fn bool() -> Type {
         Type::Primitive(Primitive::Bool)
+    }
+
+    pub fn char() -> Type {
+        Type::Primitive(Primitive::Char)
     }
 
     pub fn f(t1: Type, t2: Type) -> Type {
@@ -349,6 +354,7 @@ impl Type {
                 Primitive::Int64 => "Int".to_string(),
                 Primitive::Float64 => "Float".to_string(),
                 Primitive::Bool => "Bool".to_string(),
+                Primitive::Char => "Char".to_string(),
                 _ => unimplemented!(),
             },
             Type::Union(s, vars) => {

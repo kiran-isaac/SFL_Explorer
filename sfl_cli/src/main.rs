@@ -33,11 +33,7 @@ fn main() {
 
     // Typecheck
     let module = ast.root;
-    println!(
-        "INPUT:\n\n{}\n{}",
-        ast.to_string_sugar(ast.root, true),
-        HORIZONTAL_SEPARATOR
-    );
+
     typecheck(&mut ast, module, &mut lt, &tm).unwrap_or_else(|e| {
         eprintln!("{:?}", e);
         std::process::exit(1)
@@ -85,10 +81,6 @@ fn main() {
         i += 1;
 
         ast.do_rc_subst(main_expr, &rc);
-
-        if i == 12 {
-            print!("");
-        }
 
         rcs = lib::find_single_redex_contraction_pair(&ast, Some(ast.root), main_expr, &lt);
         println!("\n{}", ast.to_string_sugar(main_expr, false));

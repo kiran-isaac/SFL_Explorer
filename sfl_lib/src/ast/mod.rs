@@ -12,11 +12,20 @@ pub use output::{ASTDiff, ASTDiffElem};
 use std::collections::HashSet;
 use std::iter::zip;
 use std::{collections::HashMap, fmt::Debug, vec};
+use std::cmp::PartialEq;
 
 #[derive(Clone)]
 pub struct AST {
     vec: Vec<ASTNode>,
     pub root: usize,
+}
+
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+pub enum ASTStringListScanResult {
+    ListAndString,
+    ListNotString,
+    ListMaybeString,
+    NotList,
 }
 
 impl AST {
@@ -179,6 +188,46 @@ impl AST {
         }
     }
 
+    fn list_string_scan(&self, expr: usize) -> ASTStringListScanResult {
+        let n = self.get(expr);
+
+        match n.t {
+            // If its nil, then could be a string, so don't rule it out, but is not certain.
+            ASTNodeType::Identifier => if n.get_value() == "Nil" { ASTStringListScanResult::ListMaybeString } else { ASTStringListScanResult::NotList },
+            ASTNodeType::Application => {
+                let lhs = self.get_func(expr);
+                let rhs = self.get_arg(expr);
+
+                // If the argument of the application is not a list, then this is not a list
+                let rhs_result = self.list_string_scan(rhs);
+                if rhs_result == ASTStringListScanResult::NotList {
+                    return ASTStringListScanResult::NotList;
+                }
+
+                match self.get(lhs).t {
+                    ASTNodeType::Application => {
+                        let lhs_lhs = self.get_func(lhs);
+                        let lhs_rhs = self.get_arg(lhs);
+                        if self.get(self.get_app_head(lhs_lhs)).get_value() != "Cons" {
+                            return ASTStringListScanResult::NotList;
+                        }
+
+                        if rhs_result == ASTStringListScanResult::ListNotString {
+                            ASTStringListScanResult::ListNotString
+                        } else {
+                            match self.get(lhs_rhs).t {
+                                ASTNodeType::Literal => if self.get(lhs_rhs).get_lit_type() == Type::char() { ASTStringListScanResult::ListAndString } else { ASTStringListScanResult::ListNotString },
+                                _ => ASTStringListScanResult::ListNotString,
+                            }
+                        }
+                    }
+                    _ => ASTStringListScanResult::NotList,
+                }
+            }
+            _ => ASTStringListScanResult::NotList
+        }
+    }
+
     pub fn get_app_head(&self, expr: usize) -> usize {
         match self.get(expr).t {
             ASTNodeType::Application => self.get_app_head(self.get_func(expr)),
@@ -191,4 +240,44 @@ impl Debug for AST {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_string_sugar(self.root, false))
     }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::ASTStringListScanResult;
+    use crate::parsing::{Parser, ParserError};
+
+    #[test]
+    fn is_list_test() {
+        fn is_list_test(str : String) -> Result<bool, ParserError> {
+            let mut parser = Parser::from_string(str.to_string());
+
+            let ast = parser.parse_tl_expression(true)?.ast;
+            Ok(ast.list_string_scan(ast.root) != ASTStringListScanResult::NotList)
+        }
+
+        assert!(is_list_test("Nil".to_string()).unwrap());
+        assert!(is_list_test("Cons 1 (Cons 2 Nil)".to_string()).unwrap());
+
+        assert!(!is_list_test("Cons".to_string()).unwrap());
+        assert!(!is_list_test("Cons 1".to_string()).unwrap());
+    }
+
+    #[test]
+    fn is_string_test() {
+        fn is_string_test(str : String) -> Result<bool, ParserError> {
+            let mut parser = Parser::from_string(str.to_string());
+
+            let ast = parser.parse_tl_expression(true)?.ast;
+            Ok(ast.list_string_scan(ast.root) == ASTStringListScanResult::ListAndString)
+        }
+
+        assert!(!is_string_test("Nil".to_string()).unwrap());
+        assert!(!is_string_test("Cons 1 (Cons 2 Nil)".to_string()).unwrap());
+        assert!(!is_string_test("Cons".to_string()).unwrap());
+        assert!(!is_string_test("Cons 1".to_string()).unwrap());
+
+        assert!(is_string_test("\'\\n\'".to_string()).unwrap());
+    }
+
 }
