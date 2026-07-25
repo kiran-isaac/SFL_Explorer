@@ -34,6 +34,7 @@ impl TypeMap {
         type_decls.insert("Int".to_string(), Type::int64());
         type_decls.insert("Float".to_string(), Type::float64());
         type_decls.insert("Bool".to_string(), Type::bool());
+        type_decls.insert("Char".to_string(), Type::char());
         Self { types: type_decls }
     }
 }

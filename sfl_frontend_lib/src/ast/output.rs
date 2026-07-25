@@ -122,7 +122,12 @@ impl AST {
                 None => n.get_value(),
             },
             ASTNodeType::Literal => {
-                format!("{}", n.get_value())
+                if show_assigned_types {
+                    format!("{} :: {}", n.get_value(), n.get_lit_type())
+                } else {
+                    format!("{}", n.get_value())
+                }
+                
             }
             ASTNodeType::Application => {
                 let func = self.get_func(node);
