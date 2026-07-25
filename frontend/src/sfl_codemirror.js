@@ -147,7 +147,7 @@ CodeMirror.defineMode("sfl", function (_config, modeConfig) {
 
         setType("builtin")("+", "-", "*", "/", "%", "==", "<=", "<", ">=", ">")
 
-        setType("builtin")("List", "Maybe", "Either", "Int", "Bool");
+        setType("builtin")("List", "Maybe", "Either", "Int", "Bool", "Float");
 
         setType("builtin")(
             "if", "map", "foldr", "filter", "repeat", "length", "take", "range", "infiniteFrom", "sum");
@@ -327,7 +327,7 @@ CodeMirror.defineMode("sfl_no_prelude", function (_config, modeConfig) {
 
         setType("builtin")("+", "-", "*", "/", "%", "==", "<=", "<", ">=", ">")
 
-        setType("builtin")("Int", "Bool");
+        setType("builtin")("Int", "Bool", "Float");
 
         setType("number") ("true", "false");
 
