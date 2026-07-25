@@ -41,6 +41,19 @@ CodeMirror.defineMode("sfl", function (_config, modeConfig) {
             }
         }
 
+        if (ch == '\'') {
+            if (source.eat('\\')) {
+                source.next();  // should handle other escapes here
+            }
+            else {
+                source.next();
+            }
+            if (source.eat('\'')) {
+                return "string";
+            }
+            return "string error";
+        }
+
         if (largeRE.test(ch)) {
             source.eatWhile(idRE);
             if (source.eat('.')) {
@@ -134,7 +147,7 @@ CodeMirror.defineMode("sfl", function (_config, modeConfig) {
 
         setType("builtin")("+", "-", "*", "/", "%", "==", "<=", "<", ">=", ">")
 
-        setType("builtin")("List", "Maybe", "Either", "Int", "Bool", "Float");
+        setType("builtin")("List", "Maybe", "Either", "Int", "Bool");
 
         setType("builtin")(
             "if", "map", "foldr", "filter", "repeat", "length", "take", "range", "infiniteFrom", "sum");
@@ -206,6 +219,19 @@ CodeMirror.defineMode("sfl_no_prelude", function (_config, modeConfig) {
                 var t = "comment";
                 return switchState(source, setState, ncomment(t, 1));
             }
+        }
+
+        if (ch == '\'') {
+            if (source.eat('\\')) {
+                source.next();  // should handle other escapes here
+            }
+            else {
+                source.next();
+            }
+            if (source.eat('\'')) {
+                return "string";
+            }
+            return "string error";
         }
 
         if (largeRE.test(ch)) {
@@ -301,7 +327,7 @@ CodeMirror.defineMode("sfl_no_prelude", function (_config, modeConfig) {
 
         setType("builtin")("+", "-", "*", "/", "%", "==", "<=", "<", ">=", ">")
 
-        setType("builtin")("Int", "Bool", "Float");
+        setType("builtin")("Int", "Bool");
 
         setType("number") ("true", "false");
 
